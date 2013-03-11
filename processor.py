@@ -1,0 +1,101 @@
+# -*- coding: utf-8 -*-
+import datetime
+import os
+import re
+import easywebdav
+
+class Processor(object):
+
+    def __init__(self, *args, **kwargs):
+        self._target_local_directory = kwargs.get('target_local_directory')
+        self._target_remote_directory = kwargs.get('target_remote_directory')
+        self._webdav = kwargs.get('webdav')
+        self._date = str(datetime.date.today())
+        self._result_files = []
+
+    def prepare_result_directory(self):
+        os.chdir(self._target_local_directory)
+        self._target_local_directory = os.path.join(self._target_local_directory, self._date)
+        os.mkdir(self._target_local_directory)
+        os.chdir(self._target_local_directory)
+
+    def process_project(self, project_data):
+        project_name = project_data.get('name')
+        project_result_dir = os.path.join(self._target_local_directory, project_name)
+        project_result_dir_bases = os.path.join(project_result_dir, 'bases')
+        project_result_dir_dirs = os.path.join(project_result_dir, 'dirs')
+
+        # create dir for project
+        os.mkdir(project_result_dir)
+        # create dir for bases
+        os.mkdir(project_result_dir_bases)
+        # create dir for dirs
+        os.mkdir(project_result_dir_dirs)
+
+        # дампим базы
+        os.chdir(project_result_dir_bases)
+        bases = project_data.get('bases')
+        for base in bases:
+            os.system('mysqldump -u%s -p%s %s > %s__%s__%s.sql' % (base.get('user'),
+                                                                   base.get('password'),
+                                                                   base.get('base_name'),
+                                                                   'leadercom',
+                                                                   base.get('base_name'),
+                                                                   self._date))
+
+        # копируем директории
+        os.chdir(project_result_dir_dirs)
+        for dir in project_data.get('dirs'):
+            os.system('cp -R %s %s' % (dir,
+                                       os.path.join(project_result_dir_dirs, os.path.basename(dir))))
+
+        # а теперь пакуем в архив
+        os.chdir(project_result_dir)
+        filename = "leadercom__%s__%s.tar.gz" % (project_name, self._date)
+        os.system('tar -czf %(file_name)s bases dirs' % {'file_name': filename})
+        # добавляем архив в результирующие файлы
+        self._result_files.append(os.path.join(project_result_dir, filename))
+
+    def upload_files(self):
+        """
+        Заливаем файлы
+        :param dict files_list: массив путей к локальным файлам
+        """
+        # создадим необходимую папку
+        target_remote_directory = self._target_remote_directory + self._date + '/'
+        try:
+            self._webdav.mkdir(target_remote_directory)
+        except easywebdav.OperationFailed:
+            try:
+                self._webdav.rmdir(target_remote_directory)
+            except easywebdav.OperationFailed:
+                pass
+            self._webdav.mkdir(target_remote_directory)
+
+        # а теперь заливаем туда файлы
+        for obj in self._result_files:
+            self._webdav.upload(obj, target_remote_directory + obj.split('/')[-1])
+
+    def clear_old_backups(self, days=10):
+        """
+        Удаляем директории старше заданного количества дней
+        :param int days: дни в течении которых бэкап считается актуальным
+        """
+        # крайняя дата, <= которой необходимо удалить директории с бэкапами
+        limit_top_date = str(datetime.date.today() - datetime.timedelta(days=days))
+        pattern = r'^%s(\d{4}-\d{2}-\d{2})/$' % self._target_remote_directory
+
+        for obj in self._webdav.ls(self._target_remote_directory):
+            result = re.findall(pattern, obj.name)
+            if len(result) != 1:
+                continue
+            name = result[0]
+            if name <= limit_top_date:
+                try:
+                    self._webdav.rmdir(obj.name)
+                except easywebdav.OperationFailed:
+                    # здесь возникает какое-то исключение - но по факту удаление происходит
+                    pass
+
+    def delete_result_directory(self):
+        os.system('rm -r %s' % self._target_local_directory)

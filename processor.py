@@ -14,6 +14,8 @@ class Processor(object):
         self._result_files = []
 
     def prepare_result_directory(self):
+        if (not os.path.exists(self._target_local_directory)):
+            os.mkdir(self._target_local_directory)
         os.chdir(self._target_local_directory)
         self._target_local_directory = os.path.join(self._target_local_directory, self._date)
         os.mkdir(self._target_local_directory)

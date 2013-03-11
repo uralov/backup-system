@@ -7,6 +7,7 @@ webdav_config = {
     'password': '',
 }
 
+# your may add many projects in config
 projects = [
     {
         'name': 'project_name',
@@ -19,9 +20,9 @@ projects = [
             },
         ],
         'dirs': [
-		'/var/www/project_name/1/',
-		'/var/www/project_name/2/',
-	]
+            '/var/www/project_name/1/',
+            '/var/www/project_name/2/',
+        ]
     },
 ]
 

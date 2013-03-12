@@ -38,10 +38,10 @@ class Processor(object):
         os.chdir(project_result_dir_bases)
         bases = project_data.get('bases')
         for base in bases:
-            os.system('mysqldump -u%s -p%s %s > %s__%s__%s.sql' % (base.get('user'),
+            os.system('mysqldump --host=%s -u%s -p%s %s > %s__%s.sql' % (base.get('host'),
+                                                                   base.get('user'),
                                                                    base.get('password'),
                                                                    base.get('base_name'),
-                                                                   'leadercom',
                                                                    base.get('base_name'),
                                                                    self._date))
 
@@ -50,10 +50,14 @@ class Processor(object):
         for dir in project_data.get('dirs'):
             os.system('cp -R %s %s' % (dir,
                                        os.path.join(project_result_dir_dirs, os.path.basename(dir))))
+        # копируем директории по scp
+        for dir in project_data.get('dirs_scp'):
+            os.system('scp -rpq %s %s' % (dir,
+                                       os.path.join(project_result_dir_dirs, os.path.basename(dir))))
 
         # а теперь пакуем в архив
         os.chdir(project_result_dir)
-        filename = "leadercom__%s__%s.tar.gz" % (project_name, self._date)
+        filename = "%s__%s.tar.gz" % (project_name, self._date)
         os.system('tar -czf %(file_name)s bases dirs' % {'file_name': filename})
         # добавляем архив в результирующие файлы
         self._result_files.append(os.path.join(project_result_dir, filename))

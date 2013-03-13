@@ -18,6 +18,8 @@ class Processor(object):
             os.mkdir(self._target_local_directory)
         os.chdir(self._target_local_directory)
         self._target_local_directory = os.path.join(self._target_local_directory, self._date)
+        if (os.path.exists(self._target_local_directory)):
+            self.delete_result_directory()
         os.mkdir(self._target_local_directory)
         os.chdir(self._target_local_directory)
 
@@ -72,19 +74,15 @@ class Processor(object):
         try:
             self._webdav.mkdir(target_remote_directory)
         except easywebdav.OperationFailed:
-            try:
-                self._webdav.rmdir(target_remote_directory)
-            except easywebdav.OperationFailed:
-                pass
-            self._webdav.mkdir(target_remote_directory)
+            pass
 
         # а теперь заливаем туда файлы
         for obj in self._result_files:
-            os.system('curl --user %s:%s -T "{%s}" https://webdav.yandex.ru/%s' % (
+            os.system('curl --user %s:%s -T "{%s}" https://webdav.yandex.ru%s' % (
                 webdav_config.get('username'),
                 webdav_config.get('password'),
                 obj,
-                target_remote_directory + obj.split('/')[-1],
+                target_remote_directory,
             ))
             # self._webdav.upload(obj, target_remote_directory + obj.split('/')[-1])
 

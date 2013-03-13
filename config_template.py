@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+You need create config file 'config.py' based on this file
+"""
 import os
 webdav_config = {
     'host': 'webdav.yandex.ru',

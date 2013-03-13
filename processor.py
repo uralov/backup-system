@@ -62,7 +62,7 @@ class Processor(object):
         # добавляем архив в результирующие файлы
         self._result_files.append(os.path.join(project_result_dir, filename))
 
-    def upload_files(self):
+    def upload_files(self, webdav_config):
         """
         Заливаем файлы
         :param dict files_list: массив путей к локальным файлам
@@ -80,7 +80,13 @@ class Processor(object):
 
         # а теперь заливаем туда файлы
         for obj in self._result_files:
-            self._webdav.upload(obj, target_remote_directory + obj.split('/')[-1])
+            os.system('curl --user %s:%s -T "{%s}" https://webdav.yandex.ru/%s' % (
+                webdav_config.get('username'),
+                webdav_config.get('password'),
+                obj,
+                target_remote_directory + obj.split('/')[-1],
+            ))
+            # self._webdav.upload(obj, target_remote_directory + obj.split('/')[-1])
 
     def clear_old_backups(self, days=10):
         """

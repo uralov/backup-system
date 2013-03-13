@@ -15,7 +15,7 @@ processor.prepare_result_directory()
 for project in projects:
     processor.process_project(project_data=project)
 # заливаем файлы
-processor.upload_files()
+processor.upload_files(webdav_config=webdav_config)
 # удаляем старые файлы
 processor.clear_old_backups()
 # удаляем директорию с результатом

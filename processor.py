@@ -78,7 +78,7 @@ class Processor(object):
 
         # а теперь заливаем туда файлы
         for obj in self._result_files:
-            os.system('curl --user %s:%s -T "{%s}" https://webdav.yandex.ru%s' % (
+            os.system('curl --user %s:\'%s\' -T "{%s}" https://webdav.yandex.ru%s' % (
                 webdav_config.get('username'),
                 webdav_config.get('password'),
                 obj,

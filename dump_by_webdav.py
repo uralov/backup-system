@@ -4,7 +4,7 @@ from processor import Processor
 import easywebdav
 
 processor = Processor(**{
-    'target_local_directory': result_dir,
+    'root_local_directory': result_dir,
     'target_remote_directory': '/backup/',
     'webdav': easywebdav.connect(**webdav_config),
 })
@@ -15,8 +15,12 @@ processor.prepare_result_directory()
 for project in projects:
     processor.process_project(project_data=project)
 # заливаем файлы
-processor.upload_files(webdav_config=webdav_config)
+processor.upload_files_webdav(webdav_config=webdav_config)
 # удаляем старые файлы
-processor.clear_old_backups()
+processor.clear_old_backups_webdav()
+# удаляем все директории бэкапов кроме последней
+processor.delete_old_directory()
+
 # удаляем директорию с результатом
-processor.delete_result_directory()
+#processor.delete_result_directory()
+

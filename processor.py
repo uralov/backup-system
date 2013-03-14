@@ -7,17 +7,17 @@ import easywebdav
 class Processor(object):
 
     def __init__(self, *args, **kwargs):
-        self._target_local_directory = kwargs.get('target_local_directory')
+        self._date = str(datetime.date.today())
+        self._root_local_directory = kwargs.get('root_local_directory')
+        self._target_local_directory = os.path.join(self._root_local_directory, self._date)
         self._target_remote_directory = kwargs.get('target_remote_directory')
         self._webdav = kwargs.get('webdav')
-        self._date = str(datetime.date.today())
         self._result_files = []
 
     def prepare_result_directory(self):
-        if (not os.path.exists(self._target_local_directory)):
-            os.mkdir(self._target_local_directory)
-        os.chdir(self._target_local_directory)
-        self._target_local_directory = os.path.join(self._target_local_directory, self._date)
+        if (not os.path.exists(self._root_local_directory)):
+            os.mkdir(self._root_local_directory)
+        os.chdir(self._root_local_directory)
         if (os.path.exists(self._target_local_directory)):
             self.delete_result_directory()
         os.mkdir(self._target_local_directory)
@@ -64,7 +64,7 @@ class Processor(object):
         # добавляем архив в результирующие файлы
         self._result_files.append(os.path.join(project_result_dir, filename))
 
-    def upload_files(self, webdav_config):
+    def upload_files_webdav(self, webdav_config):
         """
         Заливаем файлы
         :param dict files_list: массив путей к локальным файлам
@@ -86,7 +86,7 @@ class Processor(object):
             ))
             # self._webdav.upload(obj, target_remote_directory + obj.split('/')[-1])
 
-    def clear_old_backups(self, days=10):
+    def clear_old_backups_webdav(self, days=10):
         """
         Удаляем директории старше заданного количества дней
         :param int days: дни в течении которых бэкап считается актуальным
@@ -109,3 +109,13 @@ class Processor(object):
 
     def delete_result_directory(self):
         os.system('rm -r %s' % self._target_local_directory)
+
+    def delete_old_directory(self, count_live_day=1):
+        os.chdir(self._root_local_directory)
+        limit_top_date = str(datetime.date.today() - datetime.timedelta(days=count_live_day))
+        for dir_name in os.listdir(self._root_local_directory):
+            if dir_name <= limit_top_date:
+                os.system('rm -r %s' % dir_name)
+
+
+

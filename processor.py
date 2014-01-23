@@ -4,8 +4,8 @@ import os
 import re
 import easywebdav
 
-class Processor(object):
 
+class Processor(object):
     def __init__(self, *args, **kwargs):
         self._date = str(datetime.date.today())
         self._root_local_directory = kwargs.get('root_local_directory')
@@ -15,10 +15,10 @@ class Processor(object):
         self._result_files = []
 
     def prepare_result_directory(self):
-        if (not os.path.exists(self._root_local_directory)):
+        if not os.path.exists(self._root_local_directory):
             os.mkdir(self._root_local_directory)
         os.chdir(self._root_local_directory)
-        if (os.path.exists(self._target_local_directory)):
+        if os.path.exists(self._target_local_directory):
             self.delete_result_directory()
         os.mkdir(self._target_local_directory)
         os.chdir(self._target_local_directory)
@@ -29,33 +29,39 @@ class Processor(object):
         project_result_dir_bases = os.path.join(project_result_dir, 'bases')
         project_result_dir_dirs = os.path.join(project_result_dir, 'dirs')
 
-        # create dir for project
+        # create directory for project
         os.mkdir(project_result_dir)
-        # create dir for bases
+        # create directory for bases
         os.mkdir(project_result_dir_bases)
-        # create dir for dirs
+        # create directory for dirs
         os.mkdir(project_result_dir_dirs)
 
         # дампим базы
         os.chdir(project_result_dir_bases)
         bases = project_data.get('bases')
         for base in bases:
-            os.system('mysqldump --host=%s -u%s -p%s %s > %s__%s.sql' % (base.get('host'),
-                                                                   base.get('user'),
-                                                                   base.get('password'),
-                                                                   base.get('base_name'),
-                                                                   base.get('base_name'),
-                                                                   self._date))
+            os.system('mysqldump --host=%s -u%s -p%s %s > %s__%s.sql' % (
+                base.get('host'),
+                base.get('user'),
+                base.get('password'),
+                base.get('base_name'),
+                base.get('base_name'),
+                self._date)
+            )
 
         # копируем директории
         os.chdir(project_result_dir_dirs)
-        for dir in project_data.get('dirs'):
-            os.system('cp -R %s %s' % (dir,
-                                       os.path.join(project_result_dir_dirs, os.path.basename(dir))))
+        for directory in project_data.get('dirs'):
+            os.system('cp -R %s %s' % (
+                directory,
+                os.path.join(project_result_dir_dirs, os.path.basename(directory))
+            ))
         # копируем директории по scp
-        for dir in project_data.get('dirs_scp'):
-            os.system('scp -rpq %s %s' % (dir,
-                                       os.path.join(project_result_dir_dirs, os.path.basename(dir))))
+        for directory in project_data.get('dirs_scp'):
+            os.system('scp -rpq %s %s' % (
+                directory,
+                os.path.join(project_result_dir_dirs, os.path.basename(directory))
+            ))
 
         # а теперь пакуем в архив
         os.chdir(project_result_dir)

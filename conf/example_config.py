@@ -15,7 +15,7 @@ email_config = {
     'host': 'smtp.yandex.ru',
     'port': 587,
     'user': 'noreply@vdole.net',
-    'password': 'OmBO0nJR0l9JeuY',
+    'password': '',
     'from_email': 'Backup system <noreply@vdole.net>',
     'admin_email': 'yralov87@gmail.com',
 }

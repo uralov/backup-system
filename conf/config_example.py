@@ -2,12 +2,22 @@
 """
 You need create config file 'config.py' based on this file
 """
-import os
+from os import path
+
 webdav_config = {
     'host': 'webdav.yandex.ru',
     'protocol': 'https',
     'username': '',
     'password': '',
+}
+
+email_config = {
+    'host': 'smtp.yandex.ru',
+    'port': 587,
+    'user': 'noreply@vdole.net',
+    'password': 'OmBO0nJR0l9JeuY',
+    'from_email': 'Backup system <noreply@vdole.net>',
+    'admin_email': 'yralov87@gmail.com',
 }
 
 # your may add many projects in config
@@ -32,4 +42,4 @@ projects = [
     },
 ]
 
-result_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'result')
+backup_root_dir = path.join(path.dirname(path.dirname(path.realpath(__file__))), 'result')

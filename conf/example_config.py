@@ -17,7 +17,7 @@ email_config = {
     'user': 'noreply@vdole.net',
     'password': '',
     'from_email': 'Backup system <noreply@vdole.net>',
-    'admin_email': 'yralov87@gmail.com',
+    'admin_email': 'example@gmail.com',
 }
 
 # your may add many projects in config

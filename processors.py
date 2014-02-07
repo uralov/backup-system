@@ -10,77 +10,47 @@ from email.mime.text import MIMEText
 class BaseProcessor(object):
     def __init__(self, *args, **kwargs):
         self._date = str(datetime.date.today())
-        self._src_root_dir = kwargs.get('src_root_dir')
-        self._dst_root_dir = kwargs.get('dst_root_dir')
-        self._src_dir = os.path.join(
-            self._src_root_dir,
+        self._backup_root_dir = kwargs.get('backup_root_dir')
+        self._backup_dir = os.path.join(
+            self._backup_root_dir,
             self._date
         )
         self._email_config = kwargs.get('email_config')
 
     @staticmethod
-    def delete_directory(path):
+    def _create_directory(name):
+        if not os.path.exists(name):
+            os.mkdir(name)
+
+    @staticmethod
+    def _delete_directory(path):
         os.system('rm -r %s' % path)
 
-    def get_backup_filename(self, project_name):
-        filename = "%s__%s.tar.gz" % (project_name, self._date)
-        return filename
+    def _get_backup_filename(self, project_name):
+        return "%s__%s.tar.gz" % (project_name, self._date)
 
-    def prepare_backup_directory(self):
-        if not os.path.exists(self._src_root_dir):
-            os.mkdir(self._src_root_dir)
-        os.chdir(self._src_root_dir)
-        if os.path.exists(self._src_dir):
-            self.delete_directory(self._src_dir)
-        os.mkdir(self._src_dir)
-        os.chdir(self._src_dir)
+    def _dump_dir(self, project_data, result_dir):
+        self._create_directory(result_dir)
+        os.chdir(result_dir)
+        for directory in project_data.get('dirs'):
+            os.system('cp -R %s %s' % (
+                directory,
+                os.path.join(result_dir, os.path.basename(directory))
+            ))
 
-    def delete_old_backup_directory(self, count_live_day=1):
-        os.chdir(self._src_root_dir)
-        limit_top_date = str(datetime.date.today() - datetime.timedelta(days=count_live_day))
-        for dir_name in os.listdir(self._src_root_dir):
-            if dir_name <= limit_top_date:
-                os.system('rm -r %s' % dir_name)
+    def _dump_dir_scp(self, project_data, result_dir):
+        self._create_directory(result_dir)
+        os.chdir(result_dir)
+        for directory in project_data.get('dirs_scp'):
+            os.system('scp -rpq %s %s' % (
+                directory,
+                os.path.join(result_dir, os.path.basename(directory))
+            ))
 
-    def send_mail(self, msg='', sbj='Backup problem'):
-        mail_conf = self._email_config
+    def _dump_mysql(self, project_data, result_dir):
+        self._create_directory(result_dir)
+        os.chdir(result_dir)
 
-        msg = MIMEText(msg)
-        msg['Subject'] = sbj
-        msg['From'] = mail_conf['from_email']
-        msg['To'] = mail_conf['admin_email']
-
-        smtp = smtplib.SMTP(host=mail_conf['host'], port=mail_conf['port'])
-        smtp.login(user=mail_conf['user'], password=mail_conf['password'])
-        smtp.sendmail(from_addr=mail_conf['from_email'], to_addrs=mail_conf['admin_email'],
-                      msg=msg.as_string())
-        smtp.quit()
-
-
-class WebdavProcessor(BaseProcessor):
-    def __init__(self, *args, **kwargs):
-        super(WebdavProcessor, self).__init__(*args, **kwargs)
-        self._webdav = kwargs.get('webdav')
-        self._result_files = []
-
-    def process_project(self, project_data):
-        """
-        Подготавливаем бэкап
-        """
-        project_name = project_data.get('name')
-        result_dir = os.path.join(self._src_dir, project_name)
-        result_dir_bases = os.path.join(result_dir, 'bases')
-        result_dir_dirs = os.path.join(result_dir, 'dirs')
-
-        # create directory for project
-        os.mkdir(result_dir)
-        # create directory for bases
-        os.mkdir(result_dir_bases)
-        # create directory for dirs
-        os.mkdir(result_dir_dirs)
-
-        # дампим базы
-        os.chdir(result_dir_bases)
         bases = project_data.get('bases')
         for base in bases:
             os.system('mysqldump --host=%s -u%s -p%s %s > %s__%s.sql' % (
@@ -92,26 +62,72 @@ class WebdavProcessor(BaseProcessor):
                 self._date)
             )
 
-        # копируем директории
-        os.chdir(result_dir_dirs)
-        for directory in project_data.get('dirs'):
-            os.system('cp -R %s %s' % (
-                directory,
-                os.path.join(result_dir_dirs, os.path.basename(directory))
-            ))
-        # копируем директории по scp
-        for directory in project_data.get('dirs_scp'):
-            os.system('scp -rpq %s %s' % (
-                directory,
-                os.path.join(result_dir_dirs, os.path.basename(directory))
-            ))
-
-        # а теперь пакуем в архив
-        os.chdir(result_dir)
-        filename = self.get_backup_filename(project_name)
-        os.system('tar -czf %(file_name)s bases dirs' % {'file_name': filename})
+    def _archiving_directory(self, directory, project_name):
+        os.chdir(directory)
+        file_name = self._get_backup_filename(project_name)
+        os.system('tar -czf %(file_name)s bases dirs' % {'file_name': file_name})
         # добавляем архив в результирующие файлы
-        self._result_files.append(os.path.join(result_dir, filename))
+        return os.path.join(directory, file_name)
+
+    def prepare_backup_directory(self):
+        # TODO: подумать над инициализацией в init
+        self._create_directory(self._backup_root_dir)
+        os.chdir(self._backup_root_dir)
+        if os.path.exists(self._backup_dir):
+            self._delete_directory(self._backup_dir)
+        self._create_directory(self._backup_dir)
+        os.chdir(self._backup_dir)
+
+    def delete_old_backup(self, count_live_day=1):
+        os.chdir(self._backup_root_dir)
+        limit_top_date = str(datetime.date.today()
+                             - datetime.timedelta(days=count_live_day))
+        for dir_name in os.listdir(self._backup_root_dir):
+            if dir_name <= limit_top_date:
+                self._delete_directory(dir_name)
+
+    def send_mail(self, msg='', sbj='Backup problem'):
+        mail_conf = self._email_config
+
+        msg = MIMEText(msg)
+        msg['Subject'] = sbj
+        msg['From'] = mail_conf['from_email']
+        msg['To'] = mail_conf['admin_email']
+
+        smtp = smtplib.SMTP(host=mail_conf['host'], port=mail_conf['port'])
+        smtp.login(user=mail_conf['user'], password=mail_conf['password'])
+        smtp.sendmail(
+            from_addr=mail_conf['from_email'],
+            to_addrs=mail_conf['admin_email'],
+            msg=msg.as_string()
+        )
+        smtp.quit()
+
+
+class WebdavProcessor(BaseProcessor):
+    def __init__(self, *args, **kwargs):
+        super(WebdavProcessor, self).__init__(*args, **kwargs)
+        self._dst_root_dir = kwargs.get('dst_root_dir')
+        self._webdav = kwargs.get('webdav')
+        self._result_files = []
+
+    def process_project(self, project_data):
+        """
+        Подготавливаем бэкап
+        """
+        project_name = project_data.get('name')
+        result_dir = os.path.join(self._backup_dir, project_name)
+        self._create_directory(result_dir)
+
+        result_dir_bases = os.path.join(result_dir, 'bases')
+        self._dump_mysql(project_data, result_dir_bases)
+
+        result_dir_dirs = os.path.join(result_dir, 'dirs')
+        self._dump_dir(project_data, result_dir_dirs)
+        self._dump_dir_scp(project_data, result_dir_dirs)
+
+        backup_file = self._archiving_directory(result_dir, project_name)
+        self._result_files.append(backup_file)
 
     def upload_files_webdav(self, webdav_config):
         """
@@ -133,7 +149,7 @@ class WebdavProcessor(BaseProcessor):
                 destination_dir,
             ))
 
-    def clear_old_backups_webdav(self, days=10):
+    def delete_old_backup_webdav(self, days=10):
         """
         Удаляем директории старше заданного количества дней
         :param int days: дни в течении которых бэкап считается актуальным
@@ -157,12 +173,12 @@ class WebdavProcessor(BaseProcessor):
 
 class LocalCopyProcessor(BaseProcessor):
     """
-    Создание локальных копий бэкапа, для большей надёжности
+    Создание локальных копий бэкапа
     """
     def backup_exist(self, project_data, file_path):
         # проверка существования файла бэкапа проекта
         project_name = project_data.get('name')
-        file_name = self.get_backup_filename(project_name)
+        file_name = self._get_backup_filename(project_name)
         full_file_path = os.path.join(file_path, file_name)
         return os.path.exists(full_file_path)
 

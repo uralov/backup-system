@@ -5,7 +5,7 @@ from processors import WebdavProcessor
 
 
 processor = WebdavProcessor(**{
-    'src_root_dir': backup_root_dir,
+    'backup_root_dir': backup_root_dir,
     'dst_root_dir': '/backup/',
     'webdav': easywebdav.connect(**webdav_config),
     'email_config': email_config,
@@ -19,6 +19,6 @@ for project in projects:
 # заливаем файлы на яндекс диск
 processor.upload_files_webdav(webdav_config=webdav_config)
 # удаляем старые файлы
-processor.clear_old_backups_webdav()
+processor.delete_old_backup_webdav()
 # удаляем все директории бэкапов кроме последней
-processor.delete_old_backup_directory()
+processor.delete_old_backup()

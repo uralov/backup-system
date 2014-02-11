@@ -70,27 +70,12 @@ class BaseProcessor(object):
                 self._date)
             )
 
-    def _archiving_directory(self, directory, project_name):
+    def _archive_directory(self, directory, project_name):
         os.chdir(directory)
         file_name = self._get_backup_filename(project_name)
         os.system('tar -czf %(file_name)s bases dirs' % {'file_name': file_name})
         # добавляем архив в результирующие файлы
         return os.path.join(directory, file_name)
-
-    def process_project(self, project_data):
-        """
-        Подготавливаем бэкап
-        """
-        project_name = project_data.get('name')
-        result_dir = os.path.join(self._backup_dir, project_name)
-        self._create_directory(result_dir)
-
-        result_dir_bases = os.path.join(result_dir, 'bases')
-        self._dump_mysql(project_data, result_dir_bases)
-
-        result_dir_dirs = os.path.join(result_dir, 'dirs')
-        self._dump_dir(project_data, result_dir_dirs)
-        self._dump_dir_scp(project_data, result_dir_dirs)
 
     def delete_old_backup(self, count_live_day=1):
         os.chdir(self._backup_root_dir)
@@ -126,11 +111,21 @@ class WebdavProcessor(BaseProcessor):
         self._result_files = []
 
     def process_project(self, project_data):
-        super(WebdavProcessor, self).process_project(project_data)
+        """
+        Подготавливаем бэкап
+        """
         project_name = project_data.get('name')
         result_dir = os.path.join(self._backup_dir, project_name)
+        self._create_directory(result_dir)
 
-        backup_file = self._archiving_directory(result_dir, project_name)
+        result_dir_bases = os.path.join(result_dir, 'bases')
+        self._dump_mysql(project_data, result_dir_bases)
+
+        result_dir_dirs = os.path.join(result_dir, 'dirs')
+        self._dump_dir(project_data, result_dir_dirs)
+        self._dump_dir_scp(project_data, result_dir_dirs)
+
+        backup_file = self._archive_directory(result_dir, project_name)
         self._result_files.append(backup_file)
 
     def copy_result_files_webdav(self, webdav_config):

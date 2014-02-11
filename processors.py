@@ -11,11 +11,11 @@ class BaseProcessor(object):
     def __init__(self, *args, **kwargs):
         self._date = str(datetime.date.today())
         self._backup_root_dir = kwargs.get('backup_root_dir')
-        self._backup_dir = os.path.join(
-            self._backup_root_dir,
-            self._date
-        )
+        self._backup_dir = os.path.join(self._backup_root_dir, self._date)
         self._email_config = kwargs.get('email_config')
+
+        # подготоавливаем директорию для бэкапа
+        self._prepare_backup_directory()
 
     @staticmethod
     def _create_directory(name):
@@ -25,6 +25,14 @@ class BaseProcessor(object):
     @staticmethod
     def _delete_directory(path):
         os.system('rm -r %s' % path)
+
+    def _prepare_backup_directory(self):
+        self._create_directory(self._backup_root_dir)
+        os.chdir(self._backup_root_dir)
+        if os.path.exists(self._backup_dir):
+            self._delete_directory(self._backup_dir)
+        self._create_directory(self._backup_dir)
+        os.chdir(self._backup_dir)
 
     def _get_backup_filename(self, project_name):
         return "%s__%s.tar.gz" % (project_name, self._date)
@@ -69,14 +77,20 @@ class BaseProcessor(object):
         # добавляем архив в результирующие файлы
         return os.path.join(directory, file_name)
 
-    def prepare_backup_directory(self):
-        # TODO: подумать над инициализацией в init
-        self._create_directory(self._backup_root_dir)
-        os.chdir(self._backup_root_dir)
-        if os.path.exists(self._backup_dir):
-            self._delete_directory(self._backup_dir)
-        self._create_directory(self._backup_dir)
-        os.chdir(self._backup_dir)
+    def process_project(self, project_data):
+        """
+        Подготавливаем бэкап
+        """
+        project_name = project_data.get('name')
+        result_dir = os.path.join(self._backup_dir, project_name)
+        self._create_directory(result_dir)
+
+        result_dir_bases = os.path.join(result_dir, 'bases')
+        self._dump_mysql(project_data, result_dir_bases)
+
+        result_dir_dirs = os.path.join(result_dir, 'dirs')
+        self._dump_dir(project_data, result_dir_dirs)
+        self._dump_dir_scp(project_data, result_dir_dirs)
 
     def delete_old_backup(self, count_live_day=1):
         os.chdir(self._backup_root_dir)
@@ -112,24 +126,14 @@ class WebdavProcessor(BaseProcessor):
         self._result_files = []
 
     def process_project(self, project_data):
-        """
-        Подготавливаем бэкап
-        """
+        super(WebdavProcessor, self).process_project(project_data)
         project_name = project_data.get('name')
         result_dir = os.path.join(self._backup_dir, project_name)
-        self._create_directory(result_dir)
-
-        result_dir_bases = os.path.join(result_dir, 'bases')
-        self._dump_mysql(project_data, result_dir_bases)
-
-        result_dir_dirs = os.path.join(result_dir, 'dirs')
-        self._dump_dir(project_data, result_dir_dirs)
-        self._dump_dir_scp(project_data, result_dir_dirs)
 
         backup_file = self._archiving_directory(result_dir, project_name)
         self._result_files.append(backup_file)
 
-    def upload_files_webdav(self, webdav_config):
+    def copy_result_files_webdav(self, webdav_config):
         """
         Заливаем файлы
         """
@@ -167,7 +171,7 @@ class WebdavProcessor(BaseProcessor):
                 try:
                     self._webdav.rmdir(obj.name)
                 except easywebdav.OperationFailed:
-                    # здесь возникает какое-то исключение - но по факту удаление происходит
+                    # возникает исключение, но по факту удаление происходит
                     pass
 
 
@@ -175,15 +179,24 @@ class LocalCopyProcessor(BaseProcessor):
     """
     Создание локальных копий бэкапа
     """
-    def backup_exist(self, project_data, file_path):
-        # проверка существования файла бэкапа проекта
-        project_name = project_data.get('name')
-        file_name = self._get_backup_filename(project_name)
-        full_file_path = os.path.join(file_path, file_name)
-        return os.path.exists(full_file_path)
 
-    def backup_copy(self, src, dst):
-        os.system('cp -R %s %s' % (src, dst))
+    def get_backup_path(self, project_data):
+        project_name = project_data.get('name')
+        file_path = project_data.get('dirs')[0]
+        file_name = self._get_backup_filename(project_name)
+        full_file_path = os.path.join(file_path, self._date, file_name)
+        return full_file_path
+
+    def backup_exist(self, project_data):
+        # проверка существования файла бэкапа проекта
+        backup_path = self.get_backup_path(project_data)
+        return os.path.exists(backup_path)
+
+    def process_project(self, project_data):
+        backup_path = self.get_backup_path(project_data)
+        os.system('cp %s %s' % (backup_path, self._backup_dir))
+
+
 
 
 

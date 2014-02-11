@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-You need create config file 'config.py' based on this file
+You need create config file 'webdav.py' based on this file
 """
 from os import path
 

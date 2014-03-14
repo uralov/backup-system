@@ -14,6 +14,6 @@ for project in projects:
 # заливаем файлы на яндекс диск
 processor.copy_result_files_yandex()
 # удаляем старые бэкапы на яндексе
-processor.delete_old_backup_yandex()
+processor.delete_old_backup_yandex(days=5)
 # удаляем все директории бэкапов кроме последней
 processor.delete_old_backup()

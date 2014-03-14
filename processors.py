@@ -2,7 +2,6 @@
 import datetime
 import os
 import re
-import easywebdav
 import smtplib
 from email.mime.text import MIMEText
 
@@ -20,11 +19,15 @@ class BaseProcessor(object):
     @staticmethod
     def _create_directory(name):
         if not os.path.exists(name):
-            os.mkdir(name)
+            os.system('mkdir -p %s' % name)
 
     @staticmethod
     def _delete_directory(path):
         os.system('rm -r %s' % path)
+
+    @staticmethod
+    def _copy(src, dst):
+        os.system('cp %s %s' % (src, dst))
 
     def _prepare_backup_directory(self):
         self._create_directory(self._backup_root_dir)
@@ -103,11 +106,10 @@ class BaseProcessor(object):
         smtp.quit()
 
 
-class WebdavProcessor(BaseProcessor):
+class YandexProcessor(BaseProcessor):
     def __init__(self, *args, **kwargs):
-        super(WebdavProcessor, self).__init__(*args, **kwargs)
+        super(YandexProcessor, self).__init__(*args, **kwargs)
         self._dst_root_dir = kwargs.get('dst_root_dir')
-        self._webdav = kwargs.get('webdav')
         self._result_files = []
 
     def process_project(self, project_data):
@@ -128,46 +130,34 @@ class WebdavProcessor(BaseProcessor):
         backup_file = self._archive_directory(result_dir, project_name)
         self._result_files.append(backup_file)
 
-    def copy_result_files_webdav(self, webdav_config):
+    def copy_result_files_yandex(self):
         """
         Заливаем файлы
         """
         # создадим необходимую папку
         destination_dir = self._dst_root_dir + self._date + '/'
-        try:
-            self._webdav.mkdir(destination_dir)
-        except easywebdav.OperationFailed:
-            pass
+        self._create_directory(destination_dir)
 
         # а теперь заливаем туда файлы
         for obj in self._result_files:
-            os.system('curl --user %s:\'%s\' -T "{%s}" https://webdav.yandex.ru%s' % (
-                webdav_config.get('username'),
-                webdav_config.get('password'),
-                obj,
-                destination_dir,
-            ))
+            self._copy(src=obj, dst=destination_dir)
 
-    def delete_old_backup_webdav(self, days=10):
+    def delete_old_backup_yandex(self, days=10):
         """
         Удаляем директории старше заданного количества дней
         :param int days: дни в течении которых бэкап считается актуальным
         """
-        # крайняя дата, <= которой необходимо удалить директории с бэкапами
-        limit_top_date = str(datetime.date.today() - datetime.timedelta(days=days))
+        limit_top_date = str(datetime.date.today()
+                             - datetime.timedelta(days=days))
         pattern = r'^%s(\d{4}-\d{2}-\d{2})/$' % self._dst_root_dir
 
-        for obj in self._webdav.ls(self._dst_root_dir):
+        for obj in os.listdir(self._dst_root_dir):
             result = re.findall(pattern, obj.name)
             if len(result) != 1:
                 continue
             name = result[0]
             if name <= limit_top_date:
-                try:
-                    self._webdav.rmdir(obj.name)
-                except easywebdav.OperationFailed:
-                    # возникает исключение, но по факту удаление происходит
-                    pass
+                self._delete_directory(obj.name)
 
 
 class LocalCopyProcessor(BaseProcessor):
@@ -189,11 +179,4 @@ class LocalCopyProcessor(BaseProcessor):
 
     def process_project(self, project_data):
         backup_path = self.get_backup_path(project_data)
-        os.system('cp %s %s' % (backup_path, self._backup_dir))
-
-
-
-
-
-
-
+        self._copy(backup_path, self._backup_dir)

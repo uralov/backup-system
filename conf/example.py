@@ -1,15 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-You need create config file 'webdav.py' based on this file
+You need create config file 'yandex.py' based on this file
 """
 from os import path
-
-webdav_config = {
-    'host': 'webdav.yandex.ru',
-    'protocol': 'https',
-    'username': '',
-    'password': '',
-}
 
 email_config = {
     'host': 'smtp.yandex.ru',
@@ -42,4 +35,8 @@ projects = [
     },
 ]
 
-backup_root_dir = path.join(path.dirname(path.dirname(path.realpath(__file__))), 'result')
+backup_root_dir = path.join(
+    path.dirname(path.dirname(path.realpath(__file__))),
+    'result'
+)
+dst_root_dir = '~/Yandex.Disk/backup/'

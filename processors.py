@@ -80,13 +80,17 @@ class BaseProcessor(object):
         # добавляем архив в результирующие файлы
         return os.path.join(directory, file_name)
 
-    def delete_old_backup(self, count_live_day=1):
-        os.chdir(self._backup_root_dir)
+    def _delete_old_directory(self, parent_directory, count_live_day):
+        os.chdir(parent_directory)
         limit_top_date = str(datetime.date.today()
                              - datetime.timedelta(days=count_live_day))
-        for dir_name in os.listdir(self._backup_root_dir):
+
+        for dir_name in os.listdir(parent_directory):
             if dir_name <= limit_top_date:
                 self._delete_directory(dir_name)
+
+    def delete_old_backup(self, count_live_day=1):
+        self._delete_old_directory(self._backup_root_dir, count_live_day)
 
     def send_mail(self, msg='', sbj='Backup problem'):
         mail_conf = self._email_config
@@ -147,17 +151,7 @@ class YandexProcessor(BaseProcessor):
         Удаляем директории старше заданного количества дней
         :param int days: дни в течении которых бэкап считается актуальным
         """
-        limit_top_date = str(datetime.date.today()
-                             - datetime.timedelta(days=days))
-        pattern = r'^%s(\d{4}-\d{2}-\d{2})/$' % self._dst_root_dir
-
-        for obj in os.listdir(self._dst_root_dir):
-            result = re.findall(pattern, obj.name)
-            if len(result) != 1:
-                continue
-            name = result[0]
-            if name <= limit_top_date:
-                self._delete_directory(obj.name)
+        self._delete_old_directory(self._dst_root_dir, days)
 
 
 class LocalCopyProcessor(BaseProcessor):

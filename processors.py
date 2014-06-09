@@ -23,7 +23,7 @@ class BaseProcessor(object):
 
     @staticmethod
     def _delete_directory(path):
-        os.system('rm -r %s' % path)
+        os.system('rm -rf %s' % path)
 
     @staticmethod
     def _copy(src, dst):

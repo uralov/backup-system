@@ -29,6 +29,10 @@ class BaseProcessor(object):
     def _copy(src, dst):
         os.system('cp %s %s' % (src, dst))
 
+    @staticmethod
+    def _move(src, dst):
+        os.system('mv %s %s' % (src, dst))
+
     def _prepare_backup_directory(self):
         self._create_directory(self._backup_root_dir)
         os.chdir(self._backup_root_dir)
@@ -101,6 +105,8 @@ class BaseProcessor(object):
         msg['To'] = mail_conf['admin_email']
 
         smtp = smtplib.SMTP(host=mail_conf['host'], port=mail_conf['port'])
+        if mail_conf.get('use_tls'):
+            smtp.starttls()
         smtp.login(user=mail_conf['user'], password=mail_conf['password'])
         smtp.sendmail(
             from_addr=mail_conf['from_email'],
@@ -144,7 +150,7 @@ class YandexProcessor(BaseProcessor):
 
         # а теперь заливаем туда файлы
         for obj in self._result_files:
-            self._copy(src=obj, dst=destination_dir)
+            self._move(src=obj, dst=destination_dir)
 
     def delete_old_backup_yandex(self, days=10):
         """
